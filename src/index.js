@@ -47,16 +47,32 @@ try {
       throw new Error("Invalid authentication method");
   }
 
-  // get secrets from Infisical using input params
-  const keyValueSecrets = await getRawSecrets({
-    domain,
-    envSlug,
-    infisicalToken,
-    projectSlug,
-    secretPath,
-    shouldIncludeImports,
-    shouldRecurse,
-  });
+  // secretPath may be a multiple paths - each in a new line
+  // or a single path
+  // if multiple paths are provided, split them into an array
+  const secretPaths = secretPath.split("\n").map((path) => path.trim()).filter((path) => path !== "");
+  
+  const allKeyValueSecrets = await Promise.all(
+    secretPaths.map((secretPath) =>
+      getRawSecrets({
+        domain,
+        envSlug,
+        infisicalToken,
+        projectSlug,
+        secretPath,
+        shouldIncludeImports,
+        shouldRecurse,
+      })
+    )
+  );
+
+  // Merge all key-value secrets into a single object
+  const keyValueSecrets = allKeyValueSecrets.reduce((acc, secrets) => {
+    Object.entries(secrets).forEach(([key, value]) => {
+      acc[key] = value;
+    });
+    return acc;
+  }, {});
 
   core.debug(
     `Exporting the following envs", ${JSON.stringify(
