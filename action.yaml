@@ -28,9 +28,9 @@ inputs:
     description: "Source environment slug"
     required: true
   domain:
-    description: "Infisical URL (defaults to https://app.infisical.com )"
+    description: "Infisical URL (defaults to https://eu.infisical.com )"
     required: false
-    default: "https://app.infisical.com"
+    default: "https://eu.infisical.com"
   export-type:
     description: "If set to `env`, it will set the fetched secrets as environment variables for subsequent steps of a workflow. If set to `file`, it will export the secrets in a .env file in the defined file-output-path"
     required: false
