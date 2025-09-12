@@ -1,6 +1,17 @@
 import axios from "axios";
+import axiosRetry from 'axios-retry';
 import core from "@actions/core";
 import querystring from "querystring";
+
+const retryAttempts = parseInt(core.getInput("retry-attempts"), 10) || 10;
+
+axiosRetry(axios, {
+  retries: retryAttempts,
+  retryDelay: axiosRetry.exponentialDelay,
+  onRetry: (retryCount, error, requestConfig) => {
+    core.warning(`Retrying request ${requestConfig?.url} (${retryCount}/${retryAttempts}) due to error: ${error.message}`);
+  },
+});
 
 export const UALogin = async ({ clientId, clientSecret, domain }) => {
   const loginData = querystring.stringify({
