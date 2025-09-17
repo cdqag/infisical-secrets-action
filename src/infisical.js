@@ -13,6 +13,14 @@ axiosRetry(axios, {
   },
 });
 
+const printError = (err) => {
+  core.error(err.response?.data?.message || err.message);
+  if (typeof err?.response?.data === "object") {
+    core.error(JSON.stringify(err?.response?.data, null, 4));
+  }
+  throw err;
+};
+
 export const UALogin = async ({ clientId, clientSecret, domain }) => {
   const loginData = querystring.stringify({
     clientId,
@@ -30,7 +38,7 @@ export const UALogin = async ({ clientId, clientSecret, domain }) => {
     });
     return response.data.accessToken;
   } catch (err) {
-    core.error(err.response?.data?.message || err.message);
+    printError(err);
     throw err;
   }
 };
@@ -55,7 +63,7 @@ export const oidcLogin = async ({ identityId, domain, oidcAudience }) => {
 
     return response.data.accessToken;
   } catch (err) {
-    core.error(err.response?.data?.message || err.message);
+    printError(err);
     throw err;
   }
 };
@@ -109,7 +117,7 @@ export const getRawSecrets = async ({
 
     return keyValueSecrets;
   } catch (err) {
-    core.error(err.response?.data?.message || err.message);
+    printError(err);
     throw err;
   }
 };
