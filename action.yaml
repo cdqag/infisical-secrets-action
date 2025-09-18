@@ -11,10 +11,10 @@ inputs:
     default: "universal"
   client-id:
     description: "Machine Identity client ID"
-    required: false
+    required: true
   client-secret:
     description: "Machine Identity secret key"
-    required: false
+    required: true
   identity-id:
     description: "Machine Identity ID"
     required: false
