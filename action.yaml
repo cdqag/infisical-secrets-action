@@ -23,10 +23,12 @@ inputs:
     required: false
   project-slug:
     description: "Source project slug"
-    required: true
+    required: false
+    default: project-github-actions
   env-slug:
     description: "Source environment slug"
-    required: true
+    required: false
+    default: master
   domain:
     description: "Infisical URL (defaults to https://eu.infisical.com )"
     required: false
@@ -41,8 +43,7 @@ inputs:
     default: "/.env"
   secret-path:
     description: "Source path, example: `/my-secret-path`"
-    required: false
-    default: "/"
+    required: true
   include-imports:
     description: "If set to `true`, it will include imported secrets"
     required: false
