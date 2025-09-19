@@ -16,6 +16,7 @@ try {
   const fileOutputPath = core.getInput("file-output-path");
   const shouldIncludeImports = core.getBooleanInput("include-imports");
   const shouldRecurse = core.getBooleanInput("recursive");
+  const unmaskWithTag = core.getInput("unmask-with-tag");
 
   // get infisical token using UA credentials
   let infisicalToken;
@@ -68,7 +69,7 @@ try {
   if (exportType === "env") {
     // Write the secrets to action ENV
     Object.entries(secretsMap).forEach(([key, secret]) => {
-      if (!secret.tags.includes("unmasked")) {
+      if (unmaskWithTag == "" || !secret.tags.includes(unmaskWithTag)) {
         // only set secret if it's not unmasked
         core.setSecret(secret.value);
       }
