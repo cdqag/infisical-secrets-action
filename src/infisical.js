@@ -68,6 +68,13 @@ export const oidcLogin = async ({ identityId, domain, oidcAudience }) => {
   }
 };
 
+const getSecretObject = (secret) => {
+  return {
+    value: secret.secretValue,
+    tags: secret.tags.map(tag => tag.slug) || [],
+  };
+};
+
 export const getRawSecrets = async ({
   domain,
   envSlug,
@@ -94,12 +101,12 @@ export const getRawSecrets = async ({
       },
     });
 
-    const keyValueSecrets = Object.fromEntries(
-      response.data.secrets.map((secret) => [
-        secret.secretKey,
-        secret.secretValue,
-      ])
-    );
+    const secretsMap = {};
+
+    response.data.secrets.forEach(secret => {
+      secretsMap[secret.secretKey] = getSecretObject(secret);
+    });
+    
 
     // process imported secrets
 
@@ -108,14 +115,14 @@ export const getRawSecrets = async ({
       for (let i = imports.length - 1; i >= 0; i--) {
         const importedSecrets = imports[i].secrets;
         importedSecrets.forEach((secret) => {
-          if (keyValueSecrets[secret.secretKey] === undefined) {
-            keyValueSecrets[secret.secretKey] = secret.secretValue;
+          if (secretsMap[secret.secretKey] === undefined) {
+            secretsMap[secret.secretKey] = getSecretObject(secret);
           }
         });
       }
     }
 
-    return keyValueSecrets;
+    return secretsMap;
   } catch (err) {
     printError(err);
     throw err;

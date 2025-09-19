@@ -48,7 +48,7 @@ try {
   }
 
   // get secrets from Infisical using input params
-  const keyValueSecrets = await getRawSecrets({
+  const secretsMap = await getRawSecrets({
     domain,
     envSlug,
     infisicalToken,
@@ -60,22 +60,27 @@ try {
 
   core.debug(
     `Exporting the following envs", ${JSON.stringify(
-      Object.keys(keyValueSecrets)
+      Object.keys(secretsMap)
     )}`
   );
 
   // export fetched secrets
   if (exportType === "env") {
     // Write the secrets to action ENV
-    Object.entries(keyValueSecrets).forEach(([key, value]) => {
-      core.setSecret(value);
-      core.exportVariable(key, value);
+    Object.entries(secretsMap).forEach(([key, secret]) => {
+      if (!secret.tags.includes("unmasked")) {
+        // only set secret if it's not unmasked
+        core.setSecret(secret.value);
+      }
+
+      core.exportVariable(key, secret.value);
     });
     core.info("Injected secrets as environment variables");
+
   } else if (exportType === "file") {
     // Write the secrets to a file at the specified path
-    const fileContent = Object.keys(keyValueSecrets)
-      .map((key) => `${key}='${keyValueSecrets[key]}'`)
+    const fileContent = Object.keys(secretsMap)
+      .map((key) => `${key}='${secretsMap[key].value}'`)
       .join("\n");
 
     try {
