@@ -83,6 +83,7 @@ export const getRawSecrets = async ({
   secretPath,
   shouldIncludeImports,
   shouldRecurse,
+  ifNotFound
 }) => {
   try {
     const response = await axios({
@@ -124,7 +125,27 @@ export const getRawSecrets = async ({
 
     return secretsMap;
   } catch (err) {
-    printError(err);
-    throw err;
+    if (err.response?.status === 404) {
+      const msg = `Secrets path '${secretPath}' in project '${projectSlug}' and environment '${envSlug}' not found.`;
+      switch (ifNotFound) {
+        case 'ignore':
+          core.info(msg);
+          return {};
+
+        case 'warn':
+          core.warning(msg);
+          return {};
+
+        case 'error':
+        default:
+          core.error(msg);
+          printError(err);
+          throw err;
+      }
+
+    } else {
+      printError(err);
+      throw err;
+    }
   }
 };
