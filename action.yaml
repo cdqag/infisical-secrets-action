@@ -59,6 +59,10 @@ inputs:
     description: "If set, secrets with this tag will not be masked in the GitHub Actions logs"
     required: false
     default: "unmasked"
+  if-not-found:
+    description: "Behavior when no secrets are found. Options are `warn`, `error`, or `ignore`"
+    required: false
+    default: "error"
 runs:
   using: "node20"
   main: "dist/index.js"

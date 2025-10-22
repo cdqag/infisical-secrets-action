@@ -17,6 +17,15 @@ try {
   const shouldIncludeImports = core.getBooleanInput("include-imports");
   const shouldRecurse = core.getBooleanInput("recursive");
   const unmaskWithTag = core.getInput("unmask-with-tag");
+  const ifNotFound = core.getInput("if-not-found");
+
+  // Validate ifNotFound input
+  const validIfNotFoundOptions = ["warn", "error", "ignore"];
+  if (!validIfNotFoundOptions.includes(ifNotFound)) {
+    throw new Error(
+      `Invalid value for if-not-found: ${ifNotFound}. Valid options are ${validIfNotFoundOptions.join(", ")}.`
+    );
+  }
 
   // get infisical token using UA credentials
   let infisicalToken;
@@ -57,6 +66,7 @@ try {
     secretPath,
     shouldIncludeImports,
     shouldRecurse,
+    ifNotFound
   });
 
   core.debug(
