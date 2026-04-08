@@ -66,7 +66,7 @@ Exports secrets to a file in your `GITHUB_WORKSPACE`, useful for applications th
 ```yaml
 steps:
   - name: Checkout code
-    uses: actions/checkout@v4
+    uses: actions/checkout@v6
 ```
 
 ## Inputs
