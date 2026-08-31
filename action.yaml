@@ -32,7 +32,7 @@ inputs:
     required: false
     default: "https://eu.infisical.com"
   export-type:
-    description: "If set to `env`, it will set the fetched secrets as environment variables for subsequent steps of a workflow. If set to `file`, it will export the secrets in a .env file in the defined file-output-path"
+    description: "If set to `env`, it will set the fetched secrets as environment variables for subsequent steps of a workflow. If set to `file`, it will export the secrets to a single file. If set to `files`, it will export the secrets to a separate files. In this case `file-output-path` must be an directory!"
     required: false
     default: "env"
   file-output-path:
