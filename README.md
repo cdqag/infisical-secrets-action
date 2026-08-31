@@ -58,7 +58,7 @@ Exports secrets to a file in your `GITHUB_WORKSPACE`, useful for applications th
     env-slug: "dev"
     project-slug: "cli-integration-tests-9-edj"
     export-type: "file"
-    file-output-path: "/src/.env" # defaults to "/.env"
+    file-output-path: "/src/.env" # defaults to "./.env"
 ```
 
 **Note**: Make sure to configure an `actions/checkout` step before using this action in file export mode
@@ -116,7 +116,7 @@ steps:
 
 ### `file-output-path`
 
-**Optional**. The path to save the file(s) when export-type is set to `file` or `files`. Defaults to `/.env`
+**Optional**. The path to save the file(s) when export-type is set to `file` or `files`. Defaults to `./.env`
 
 ### `secret-path`
 
