@@ -42,12 +42,12 @@ const fetchInfisicalToken = async (method) => {
       if (!(clientId && clientSecret)) {
         throw new Error("Missing universal auth credentials");
       }
-      infisicalToken = await UALogin({
+
+      return await UALogin({
         domain,
         clientId,
         clientSecret,
       });
-      break;
     }
 
     case "oidc": {
@@ -57,18 +57,34 @@ const fetchInfisicalToken = async (method) => {
       if (!identityId) {
         throw new Error("Missing identity ID");
       }
-      infisicalToken = await oidcLogin({
+
+      return await oidcLogin({
         domain,
         identityId,
         oidcAudience,
       });
-      break;
     }
 
     default:
       throw new Error("Invalid authentication method");
   }
 };
+
+/**
+ * Mask secrets (if needed)
+ * @param {Map<string, string>} secretsMap Secrets map
+ */
+const maskSecrets = (secretsMap) => {
+  Object.entries(secretsMap).forEach(([key, secret]) => {
+    if (unmaskWithTag == "" || !secret.tags.includes(unmaskWithTag)) {
+      // only set secret if it's not unmasked
+      core.debug(`Masking ${key}...`);
+      core.setSecret(secret.value);
+    } else {
+      core.debug(`Not masking ${key}...`)
+    }
+  });
+}
 
 /**
  * Export given secrets to environment variables
@@ -78,14 +94,6 @@ const exportToEnvs = (secretsMap) => {
   core.debug("Exporting to environment variables...");
 
   Object.entries(secretsMap).forEach(([key, secret]) => {
-    if (unmaskWithTag == "" || !secret.tags.includes(unmaskWithTag)) {
-      // only set secret if it's not unmasked
-      core.debug(`Masking ${key}...`);
-      core.setSecret(secret.value);
-    } else {
-      core.debug(`Not masking ${key}...`)
-    }
-
     core.debug(`Exporting ${key}...`);
     core.exportVariable(key, secret.value);
     core.debug("OK");
@@ -132,16 +140,16 @@ const exportToSingleFile = (secretsMap, filePath) => {
 const exportToSeparateFiles = (secretsMap, dirPath) => {
   core.debug("Exporting to separate files...");
 
-  for (let key in secretsMap) {
+  Object.entries(secretsMap).forEach(([key, secret]) => {
     try {
       let keyFile = path.join(dirPath, key);
       core.debug(`Saving ${key} to ${keyFile}...`)
-      fs.writeFileSync(keyFile, secretsMap[key]);
+      fs.writeFileSync(keyFile, secret.value);
       core.debug("OK");
     } catch (err) {
       core.setFailed(`Error writing file: ${err.message}`);
     }
-  }
+  });
 
   core.info("Successfully exported secrets to separate files");
 };
@@ -166,10 +174,10 @@ try {
   });
   core.debug(`OK, fetched following keys: ${JSON.stringify(Object.keys(secretsMap))}`);
 
+  maskSecrets(secretsMap);
 
   if (exportType === "env") {
     exportToEnvs(secretsMap);
-    return
     
   } else if (exportType === "file" || exportType === "files") {
     core.debug("Normalizing file output path...")
