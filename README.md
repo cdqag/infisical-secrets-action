@@ -105,11 +105,20 @@ steps:
 
 ### `export-type`
 
-**Optional**. If set to `env`, it will set the fetched secrets as environment variables for subsequent steps of a workflow. If set to `file`, it will export the secrets in a .env file in the defined file-output-path. Defaults to `env`
+**Optional**.
+
+- If set to `env`, it will set the fetched secrets as environment variables for subsequent steps of a workflow.
+- If set to `file`, it will export the secrets to a file in the defined `file-output-path`.
+
+    - If file ends with `.json`, it will export the secrets in JSON format.
+    - Otherwise will use `KEY=VALUE` (env vars) format.
+
+- If set to `files`, it will export secrets to a separate files and expects that `file-output-path` is a directory.
+- Defaults to `env`
 
 ### `file-output-path`
 
-**Optional**. The path to save the file when export-type is set to `file`. Defaults to `/.env`
+**Optional**. The path to save the file(s) when export-type is set to `file` or `files`. Defaults to `/.env`
 
 ### `secret-path`
 
