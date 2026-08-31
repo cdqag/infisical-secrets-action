@@ -1,23 +1,21 @@
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import core from "@actions/core";
 import { UALogin, getRawSecrets, oidcLogin } from "./infisical.js";
-import fs from "fs/promises";
 
 try {
-  const method = core.getInput("method");
-  const UAClientId = core.getInput("client-id");
-  const UAClientSecret = core.getInput("client-secret");
-  const identityId = core.getInput("identity-id");
-  const oidcAudience = core.getInput("oidc-audience");
-  const domain = core.getInput("domain");
-  const envSlug = core.getInput("env-slug");
-  const projectSlug = core.getInput("project-slug");
-  const secretPath = core.getInput("secret-path");
-  const exportType = core.getInput("export-type");
-  const fileOutputPath = core.getInput("file-output-path");
-  const shouldIncludeImports = core.getBooleanInput("include-imports");
-  const shouldRecurse = core.getBooleanInput("recursive");
-  const unmaskWithTag = core.getInput("unmask-with-tag");
-  const ifNotFound = core.getInput("if-not-found");
+  var method = core.getInput("method");
+  var domain = core.getInput("domain");
+  var envSlug = core.getInput("env-slug");
+  var projectSlug = core.getInput("project-slug");
+  var secretPath = core.getInput("secret-path");
+  var exportType = core.getInput("export-type");
+  var fileOutputPath = core.getInput("file-output-path");
+  var shouldIncludeImports = core.getBooleanInput("include-imports");
+  var shouldRecurse = core.getBooleanInput("recursive");
+  var unmaskWithTag = core.getInput("unmask-with-tag");
+  var ifNotFound = core.getInput("if-not-found");
 
   // Validate ifNotFound input
   const validIfNotFoundOptions = ["warn", "error", "ignore"];
@@ -26,38 +24,154 @@ try {
       `Invalid value for if-not-found: ${ifNotFound}. Valid options are ${validIfNotFoundOptions.join(", ")}.`
     );
   }
+} catch (error) {
+  core.error("Failure during inputs validation");
+  core.setFailed(error.message);
+  throw error;
+}
 
-  // get infisical token using UA credentials
-  let infisicalToken;
-
+/**
+ * Fetch Infisical Token using given given method
+ * @param {string} _method Method name 
+ */
+const fetchInfisicalToken = async (method) => {
   switch (method) {
     case "universal": {
-      if (!(UAClientId && UAClientSecret)) {
+      const clientId = core.getInput("client-id");
+      const clientSecret = core.getInput("client-secret");
+
+      if (!(clientId && clientSecret)) {
         throw new Error("Missing universal auth credentials");
       }
-      infisicalToken = await UALogin({
+
+      return await UALogin({
         domain,
-        clientId: UAClientId,
-        clientSecret: UAClientSecret,
+        clientId,
+        clientSecret,
       });
-      break;
     }
+
     case "oidc": {
+      const identityId = core.getInput("identity-id");
+      const oidcAudience = core.getInput("oidc-audience");
+
       if (!identityId) {
         throw new Error("Missing identity ID");
       }
-      infisicalToken = await oidcLogin({
+
+      return await oidcLogin({
         domain,
         identityId,
         oidcAudience,
       });
-      break;
     }
+
     default:
       throw new Error("Invalid authentication method");
   }
+};
 
-  // get secrets from Infisical using input params
+/**
+ * Mask secrets (if needed)
+ * @param {Map<string, string>} secretsMap Secrets map
+ */
+const maskSecrets = (secretsMap) => {
+  Object.entries(secretsMap).forEach(([key, secret]) => {
+    if (unmaskWithTag == "" || !secret.tags.includes(unmaskWithTag)) {
+      // only set secret if it's not unmasked
+      core.debug(`Masking ${key}...`);
+      core.setSecret(secret.value);
+    } else {
+      core.debug(`Not masking ${key}...`)
+    }
+  });
+}
+
+/**
+ * Export given secrets to environment variables
+ * @param {Map<string, string>} secretsMap Secrets map
+ */
+const exportToEnvs = (secretsMap) => {
+  core.debug("Exporting to environment variables...");
+
+  Object.entries(secretsMap).forEach(([key, secret]) => {
+    core.debug(`Exporting ${key}...`);
+    core.exportVariable(key, secret.value);
+    core.debug("OK");
+  });
+
+  core.info("Successfully exported secrets to env vars");
+};
+
+/**
+ * Export given secrets to single file
+ * @param {Map<string, string>} secretsMap Secrets map
+ * @param {string} filePath File path
+ */
+const exportToSingleFile = (secretsMap, filePath) => {
+  core.debug("Exporting to single file...");
+
+  const isJson = filePath.endsWith('.json');
+
+  let fileContent = '';
+  if (isJson) {
+    core.debug('File path ends with .json - exporting in JSON format');
+    fileContent = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(secretsMap).map(([key, secret]) => [key, secret.value])
+      ),
+      null,
+      2
+    );
+  } else {
+    core.debug('Exporting in k=v format');
+    fileContent = Object.keys(secretsMap)
+      .map((key) => `${key}='${secretsMap[key].value}'`)
+      .join("\n");
+  }
+
+  try {
+    fs.writeFileSync(filePath, fileContent);
+  } catch (err) {
+    core.setFailed(`Error writing file: ${err.message}`);
+  }
+
+  core.info("Successfully exported secrets to file");
+};
+
+/**
+ * Export given secrets to a directory as a separate files
+ * @param {Map<string, string>} secretsMap Secrets map
+ * @param {string} dirPath Directory path
+ */
+const exportToSeparateFiles = (secretsMap, dirPath) => {
+  core.debug("Exporting to separate files...");
+  fs.mkdirSync(dirPath, { recursive: true });
+
+  Object.entries(secretsMap).forEach(([key, secret]) => {
+    const fileName = key.replace(/[\\/]/g, "_");
+    const keyFile = path.join(dirPath, fileName);
+    core.debug(`Saving ${key} to ${keyFile}...`);
+
+    try {
+      fs.writeFileSync(keyFile, secret.value, { mode: 0o600 });
+      core.debug("OK");
+    } catch (err) {
+      throw new Error(`Error writing file '${keyFile}': ${err.message}`);
+    }
+  });
+
+  core.info("Successfully exported secrets to separate files");
+};
+
+
+// Main
+try {
+  core.debug("Fetching Infisical Token...")
+  const infisicalToken = await fetchInfisicalToken(method, domain);
+  core.debug("OK");
+
+  core.debug("Fetching secrets from Infisical...");
   const secretsMap = await getRawSecrets({
     domain,
     envSlug,
@@ -68,41 +182,42 @@ try {
     shouldRecurse,
     ifNotFound
   });
+  core.debug(`OK, fetched following keys: ${JSON.stringify(Object.keys(secretsMap))}`);
 
-  core.debug(
-    `Exporting the following envs", ${JSON.stringify(
-      Object.keys(secretsMap)
-    )}`
-  );
+  maskSecrets(secretsMap);
 
-  // export fetched secrets
   if (exportType === "env") {
-    // Write the secrets to action ENV
-    Object.entries(secretsMap).forEach(([key, secret]) => {
-      if (unmaskWithTag == "" || !secret.tags.includes(unmaskWithTag)) {
-        // only set secret if it's not unmasked
-        core.setSecret(secret.value);
+    exportToEnvs(secretsMap);
+    
+  } else if (exportType === "file" || exportType === "files") {
+    core.debug("Normalizing file output path...")
+    fileOutputPath = path.normalize(fileOutputPath);
+    core.debug(`OK - ${fileOutputPath}`);
+
+    if (path.isAbsolute(fileOutputPath)) {
+      core.debug('Provided file output path is absolute - checking....');
+      if (fileOutputPath.startsWith(os.homedir())) {
+        core.debug('Absolute file path is part of home directory - OK');
+      } else {
+        core.setFailed(`Security Validation! File output path you have provided is an absolute escaping your home directory. Please use either relative path or one inside ${os.homedir()}`);
       }
-
-      core.exportVariable(key, secret.value);
-    });
-    core.info("Injected secrets as environment variables");
-
-  } else if (exportType === "file") {
-    // Write the secrets to a file at the specified path
-    const fileContent = Object.keys(secretsMap)
-      .map((key) => `${key}='${secretsMap[key].value}'`)
-      .join("\n");
-
-    try {
-      const filePath = `${process.env.GITHUB_WORKSPACE}${fileOutputPath}`;
-      core.info(`Exporting secrets to ${filePath}`);
-      await fs.writeFile(filePath, fileContent);
-    } catch (err) {
-      core.error(`Error writing file: ${err.message}`);
-      throw err;
+    } else {
+      core.debug('An relative path - placing in workspace');
+      fileOutputPath = path.join(process.env.GITHUB_WORKSPACE, fileOutputPath);
     }
-    core.info("Successfully exported secrets to file");
+
+    core.debug(`File path is: ${fileOutputPath}`)
+
+    if (exportType === "files") {
+      // Export each secret as a separate file
+      exportToSeparateFiles(secretsMap, fileOutputPath);
+    } else {
+      // Single file with all secrets
+      exportToSingleFile(secretsMap, fileOutputPath);
+    }
+
+  } else {
+    core.setFailed("Unsupported exportType!")
   }
 } catch (error) {
   core.setFailed(error.message);
