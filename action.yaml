@@ -38,7 +38,7 @@ inputs:
   file-output-path:
     description: "The path to save the file when export-type is set to `file`"
     required: false
-    default: "/.env"
+    default: "./.env"
   secret-path:
     description: "Source path, example: `/my-secret-path`"
     required: false
