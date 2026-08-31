@@ -79,10 +79,14 @@ const maskSecrets = (secretsMap) => {
   Object.entries(secretsMap).forEach(([key, secret]) => {
     if (unmaskWithTag == "" || !secret.tags.includes(unmaskWithTag)) {
       // only set secret if it's not unmasked
-      core.debug(`Masking ${key}...`);
-      core.setSecret(secret.value);
+      if (secret.value == "") {
+        core.debug(`Not masking ${key} - empty value`)
+      } else {
+        core.debug(`Masking ${key}...`);
+        core.setSecret(secret.value);
+      }
     } else {
-      core.debug(`Not masking ${key}...`)
+      core.debug(`Not masking ${key} - unmask tag`)
     }
   });
 }
