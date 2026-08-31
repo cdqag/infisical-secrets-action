@@ -111,9 +111,7 @@ steps:
 - If set to `file`, it will export the secrets to a file in the defined `file-output-path`.
 
     - If file ends with `.json`, it will export the secrets in JSON format.
-    - Otherwise will use `KEY=VALUE` (env vars) format.
-
-- If set to `files`, it will export secrets to a separate files and expects that `file-output-path` is a directory.
+    - Otherwise will use `KEY='VALUE'` (env vars) format.
 - Defaults to `env`
 
 ### `file-output-path`

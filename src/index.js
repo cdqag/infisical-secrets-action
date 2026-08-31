@@ -27,6 +27,7 @@ try {
 } catch (error) {
   core.error("Failure during inputs validation");
   core.setFailed(error.message);
+  throw error;
 }
 
 /**
@@ -115,7 +116,13 @@ const exportToSingleFile = (secretsMap, filePath) => {
   let fileContent = '';
   if (isJson) {
     core.debug('File path ends with .json - exporting in JSON format');
-    fileContent = JSON.stringify(secretsMap);
+    fileContent = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(secretsMap).map(([key, secret]) => [key, secret.value])
+      ),
+      null,
+      2
+    );
   } else {
     core.debug('Exporting in k=v format');
     fileContent = Object.keys(secretsMap)
@@ -139,15 +146,18 @@ const exportToSingleFile = (secretsMap, filePath) => {
  */
 const exportToSeparateFiles = (secretsMap, dirPath) => {
   core.debug("Exporting to separate files...");
+  fs.mkdirSync(dirPath, { recursive: true });
 
   Object.entries(secretsMap).forEach(([key, secret]) => {
+    const fileName = key.replace(/[\\/]/g, "_");
+    const keyFile = path.join(dirPath, fileName);
+    core.debug(`Saving ${key} to ${keyFile}...`);
+
     try {
-      let keyFile = path.join(dirPath, key);
-      core.debug(`Saving ${key} to ${keyFile}...`)
-      fs.writeFileSync(keyFile, secret.value);
+      fs.writeFileSync(keyFile, secret.value, { mode: 0o600 });
       core.debug("OK");
     } catch (err) {
-      core.setFailed(`Error writing file: ${err.message}`);
+      throw new Error(`Error writing file '${keyFile}': ${err.message}`);
     }
   });
 
